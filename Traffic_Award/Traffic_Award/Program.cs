@@ -34,7 +34,6 @@ namespace Traffic_Award
                 var configuration = builder.Build();
                 string allexchangewallets = configuration["allexchangewallets"];
                 string blockchainconnection = configuration["burstblockchain"];
-                string testdbconnection = configuration["testdb"];
                 string addexchanges = configuration["addexchanges"];
                 string getalltransactions = configuration["getalltransactions"];
                 string getqualifyingtransactions = configuration["getqualifyingtransactions"];
@@ -60,11 +59,11 @@ namespace Traffic_Award
 
                 #region Clearing testdb tables
                 Console.WriteLine("Clearing exchange wallets from test db" + Environment.NewLine);
-                Utilities.TestDBUpdate(testdbconnection, "TRUNCATE TABLE exchange_wallets;", queryParameters, true);
+                Utilities.TestDBUpdate(blockchainconnection, "TRUNCATE TABLE exchange_wallets;", queryParameters, true);
 
 
                 Console.WriteLine("Clearing transaction table from test db" + Environment.NewLine);
-                Utilities.TestDBUpdate(testdbconnection, "TRUNCATE TABLE all_weekly_trans;", queryParameters, true);
+                Utilities.TestDBUpdate(blockchainconnection, "TRUNCATE TABLE all_weekly_trans;", queryParameters, true);
                 #endregion
 
                 #region Capturing exchange wallets
@@ -81,14 +80,14 @@ namespace Traffic_Award
                     sb.Append(string.Join(",", wallets)).Append(";");
 
                     Console.WriteLine("Adding exchange wallets to testdb" + Environment.NewLine);
-                    Utilities.TestDBUpdate(testdbconnection, sb.ToString(), queryParameters, true);
+                    Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
                     queryParameters.Clear();
                     Console.WriteLine("Exchange wallets added to testdb" + Environment.NewLine);
 
                     Console.WriteLine("Adding known exchange wallets to testdb" + Environment.NewLine);
                     foreach (string exchange in addexchanges.Split(','))
                     {
-                        Utilities.TestDBUpdate(testdbconnection, exchange, queryParameters, false);
+                        Utilities.TestDBUpdate(blockchainconnection, exchange, queryParameters, false);
                     }
                 }
                 queryParameters.Clear();
@@ -115,7 +114,7 @@ namespace Traffic_Award
                     sb.Append(string.Join(",", wallets)).Append(";");
 
                     Console.WriteLine("Adding transactions to testdb" + Environment.NewLine);
-                    Utilities.TestDBUpdate(testdbconnection, sb.ToString(), queryParameters, true);
+                    Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
                 }
                 queryParameters.Clear();
                 Console.WriteLine("Transactions captured");
@@ -125,7 +124,7 @@ namespace Traffic_Award
                 #region Capturing qualifying transactions
                 Console.WriteLine("Querying testdb to find qualifying transactions for the raffle" + Environment.NewLine);
                 List<string> rafflemembers = new List<string>();
-                using (DataTable dt = Utilities.DataTableQuery(testdbconnection, getqualifyingtransactions, queryParameters, true))
+                using (DataTable dt = Utilities.DataTableQuery(blockchainconnection, getqualifyingtransactions, queryParameters, true))
                 {
                     queryParameters.Clear();
                     foreach (DataRow row in dt.Rows)
@@ -186,7 +185,7 @@ namespace Traffic_Award
                 foreach (string winner in rafflewinners)
                 {
                     queryParameters.Add("@winner", winner);
-                    winnerdata.Add(winner, Utilities.GetWinnerData(testdbconnection, getwinnerdata, queryParameters, true));
+                    winnerdata.Add(winner, Utilities.GetWinnerData(blockchainconnection, getwinnerdata, queryParameters, true));
                     queryParameters.Clear();
                 }
                 Console.WriteLine("Finished retrieving transaction data for each raffle winner" + Environment.NewLine);
@@ -199,7 +198,6 @@ namespace Traffic_Award
                 Tuple<bool, string> burstaddress = null;
                 foreach (KeyValuePair<string, string> winner in winnerdata)
                 {
-                    //Console.WriteLine("Winner = " + winner.Key + " --- Transaction = " + winner.Value);
                     burstaddress = await Utilities.GetBurstAddress(burstAPI, winner.Value);
                     if (burstaddress.Item1)
                     {
@@ -221,7 +219,8 @@ namespace Traffic_Award
                 }
                 #endregion
 
-                //Console.WriteLine("Done!");
+                Console.WriteLine("Done!");
+                Console.ReadKey(true);
             }
             catch (Exception ex)
             {

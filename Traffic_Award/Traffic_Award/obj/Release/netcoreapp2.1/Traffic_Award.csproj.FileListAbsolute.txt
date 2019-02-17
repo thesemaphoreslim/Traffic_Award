@@ -9,3 +9,4 @@ c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Release\netcoreap
 c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\Traffic_Award.dll
 c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\Traffic_Award.pdb
 c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\appsettings.json
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\Traffic_Award.csprojAssemblyReference.cache
