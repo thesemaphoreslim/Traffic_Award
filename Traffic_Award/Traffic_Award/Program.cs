@@ -80,8 +80,16 @@ namespace Traffic_Award
                     sb.Append(string.Join(",", wallets)).Append(";");
 
                     Console.WriteLine("Adding exchange wallets to testdb" + Environment.NewLine);
-                    Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
-                    queryParameters.Clear();
+                    if (wallets.Count > 0)
+                    {
+                        Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
+                        queryParameters.Clear();
+                    }
+                    else
+                    {
+                        Console.WriteLine("No exchange wallets found...Pretty sure your database is blank or out of sync.  Resync and try again.");
+                        return;
+                    }
                     Console.WriteLine("Exchange wallets added to testdb" + Environment.NewLine);
 
                     Console.WriteLine("Adding known exchange wallets to testdb" + Environment.NewLine);
@@ -92,7 +100,7 @@ namespace Traffic_Award
                 }
                 queryParameters.Clear();
 
-                Console.WriteLine("Exchange wallets captured");
+                Console.WriteLine("Exchange wallets captured" + Environment.NewLine);
                 #endregion
 
 
@@ -113,8 +121,16 @@ namespace Traffic_Award
                     }
                     sb.Append(string.Join(",", wallets)).Append(";");
 
-                    Console.WriteLine("Adding transactions to testdb" + Environment.NewLine);
-                    Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
+                    if (wallets.Count > 0)
+                    {
+                        Console.WriteLine("Adding transactions to testdb" + Environment.NewLine);
+                        Utilities.TestDBUpdate(blockchainconnection, sb.ToString(), queryParameters, true);
+                    }
+                    else
+                    {
+                        Console.WriteLine("No transactions found for the given timeframe...Pretty sure your database is blank or out of sync - or maybe you selected an invalid time range. Try again.");
+                        return;
+                    }
                 }
                 queryParameters.Clear();
                 Console.WriteLine("Transactions captured");
