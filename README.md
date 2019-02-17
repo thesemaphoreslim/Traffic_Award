@@ -12,8 +12,8 @@ The app first tries to identify any wallets belonging to or created by exchanges
 
 Next, all Burst transactions for the specified time period and with amounts greater than or equal to the "burstamount" (1000 Burst) are queried from the database and stored in the "all_weekly_trans" table. Note, this app was originally intended to be run once a week, but the user can specify a start and end time (startdayinterval/enddayinterval) for the "getalltransactions" query which allows it to find transactions across any timeframe.
 
-The "getqualifyingtransactions" query is then executed to retrieve qualifying accounts. A qualifying account is an address that is sending Burst across the network but NOT to a known exchange wallet.
-
-An optional filter can also be applied via the "getpoolwallets" query, which removes any known pool wallet ids from the list of qualifying transactions.
+The "getqualifyingtransactions" query is then executed to retrieve qualifying accounts. A qualifying account is a non-exchange/non-pool address that is sending Burst across the network to another non-exchange/non-pool address. (Note: removing of the pool wallets is an optional filter  applied via the "getpoolwallets" query, which removes any known pool wallet ids from the list of qualifying transactions. It is enabled by default.)
 
 Finally, N wallets are randomly selected from the list of qualifying accounts and the sender_id from the database is sent to the "transaction" API to determine the BURST Account ID which can be used to create a multi-out transaction.
+
+You can check if your BURST address is eligible for the raffle and how many entries it has earned by selecting the appropriate menu option.
