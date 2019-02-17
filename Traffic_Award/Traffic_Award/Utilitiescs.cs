@@ -10,6 +10,8 @@ namespace Traffic_Award
 {
     class Utilities
     {
+        public static Dictionary<string, object> queryParameters = new Dictionary<string, object>();
+
         public static DataTable DataTableQuery(string connectionstring, string query, Dictionary<string, object> parameters, bool showerrors)
         {
             using (DataTable dt = new DataTable())
@@ -34,6 +36,10 @@ namespace Traffic_Award
                 catch (Exception ex)
                 {
                     if (showerrors) Console.WriteLine("Error in BlockChainQuery - " + ex);
+                }
+                finally
+                {
+                    Utilities.queryParameters.Clear();
                 }
                 return dt;
             }
@@ -63,6 +69,10 @@ namespace Traffic_Award
                 catch (Exception ex)
                 {
                     if (showerrors) Console.WriteLine("Error in TestDBUpdate - " + ex);
+                }
+                finally
+                {
+                    Utilities.queryParameters.Clear();
                 }
                 return dt;
             }
@@ -95,6 +105,10 @@ namespace Traffic_Award
             catch (Exception ex)
             {
                 if (showerrors) Console.WriteLine("Error in TestDBUpdate - " + ex);
+            }
+            finally
+            {
+                Utilities.queryParameters.Clear();
             }
             return retval;
         }
@@ -164,6 +178,5 @@ namespace Traffic_Award
                 return MySqlHelper.EscapeString(value.ToString());
             }
         }
-
     }
 }
