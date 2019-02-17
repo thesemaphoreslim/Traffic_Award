@@ -19,3 +19,10 @@ The "getqualifyingtransactions" query is then executed to retrieve qualifying ac
 Finally, N wallets are randomly selected from the list of qualifying accounts and the sender_id from the database is sent to the "transaction" API to determine the BURST Account ID which can be used to create a multi-out transaction.
 
 You can check if your BURST address is eligible for the raffle and how many entries it has earned by selecting the appropriate menu option.
+
+Exception sender_ids listed below:
+5810532812037266198 = Poloniex Wallet
+-3382445822566252642 = brs.hpool.com Wallet
+-5063553784103844629 = Bittrex Wallet
+-1151854202306370986 = Burst Marketing Fund Wallet
+-2687430935354532896 = BMF Pool Wallet
