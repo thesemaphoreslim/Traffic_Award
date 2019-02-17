@@ -25,65 +25,178 @@ namespace Traffic_Award
 
     class Program
     {
+        #region Capturing app configs from json
+        static IConfigurationBuilder builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json");
+        static IConfigurationRoot configuration = builder.Build();
+        static string allexchangewallets = configuration["allexchangewallets"];
+        static string db_server = configuration["db_server"];
+        static string db_port = configuration["db_port"];
+        static string db_uid = configuration["db_uid"];
+        static string db_pwd = configuration["db_pwd"];
+        static string db_name = configuration["db_name"];
+        static string db_connstring = "Server=" + db_server + ";Port=" + db_port + ";Uid=" + db_uid + ";Pwd=" + db_pwd + ";Database=" + db_name;
+        static string addexchanges = configuration["addexchanges"];
+        static string getalltransactions = configuration["getalltransactions"];
+        static string getqualifyingtransactions = configuration["getqualifyingtransactions"];
+        static string getwinnerdata = configuration["getwinnerdata"];
+        static string getpoolwallets = configuration["getpoolwallets"];
+        static string geteligibility = configuration["geteligibility"];
+        static string checkfortable = configuration["checkfortable"];
+        static string createexchangetable = configuration["createexchangetable"];
+        static string createtranstable = configuration["createtranstable"];
+        static double startdayinterval = double.Parse(configuration["startdayinterval"]);
+        static double enddayinterval = double.Parse(configuration["enddayinterval"]);
+        static double burstamount = double.Parse(configuration["burstamount"]);
+        static double feeamount = double.Parse(configuration["feeamount"]);
+        static double minfeeamount = double.Parse(configuration["minfeeamount"]);
+        static double numofwinners = double.Parse(configuration["numofwinners"]);
+        static string burstAccountAPI = configuration["BurstAccountAPI"];
+        static string burstTransactionsAPI = configuration["BurstTransactionsAPI"];
+        static bool removePoolAddresses = bool.Parse(configuration["removepooladdresses"]);
+        static bool dodouble = bool.Parse(configuration["dodouble"]);
+        static bool keeprunning = true;
+        static List<string> rafflemembers = new List<string>();
+        static List<string> rafflewinners = new List<string>();
+        static List<string> exwallets = new List<string>();
+        static List<string> alltrans = new List<string>();
+        static List<string> winnerAddresses = new List<string>();
+        static Dictionary<string, string> winnerdata = new Dictionary<string, string>();
+        #endregion
+
+        #region Calculating timestamp
+        static DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0);
+        static DateTime startdate = DateTime.Now.AddDays(startdayinterval);
+        static DateTime enddate = DateTime.Now.AddDays(enddayinterval);
+        static double starttimestamp = (startdate - burstepoch).TotalSeconds;
+        static double endtimestamp = (enddate - burstepoch).TotalSeconds;
+        #endregion
 
         static void Main(string[] args)
         {
+            RunSetup();
             RunAsync().GetAwaiter().GetResult();
+        }
+        
+        static void RunSetup()
+        {
+            try
+            {
+                Console.Clear();
+                Console.WriteLine(Environment.NewLine + Environment.NewLine + "Running initial setup...this may take a moment." + Environment.NewLine + Environment.NewLine);
+                #region Check for schema
+                Utilities.queryParameters.Add("@db_name", db_name);
+                Utilities.queryParameters.Add("@table_name", "exchange_wallets");
+                if (string.IsNullOrEmpty(Utilities.GetWinnerData(db_connstring, checkfortable, Utilities.queryParameters, true)))
+                {
+                    Utilities.TestDBUpdate(db_connstring, createexchangetable, Utilities.queryParameters, true);
+                }
+                Utilities.queryParameters.Add("@db_name", db_name);
+                Utilities.queryParameters.Add("@table_name", "all_weekly_trans");
+                if (string.IsNullOrEmpty(Utilities.GetWinnerData(db_connstring, checkfortable, Utilities.queryParameters, true)))
+                {
+                    Utilities.TestDBUpdate(db_connstring, createtranstable, Utilities.queryParameters, true);
+                }
+                #endregion
+
+                #region Clearing testdb tables
+                Console.WriteLine("Clearing exchange wallets table..." + Environment.NewLine);
+                Utilities.TestDBUpdate(db_connstring, "TRUNCATE TABLE exchange_wallets;", Utilities.queryParameters, true);
+
+
+                Console.WriteLine("Clearing transaction table..." + Environment.NewLine);
+                Utilities.TestDBUpdate(db_connstring, "TRUNCATE TABLE all_weekly_trans;", Utilities.queryParameters, true);
+                #endregion
+
+                #region Capturing exchange wallets
+                Console.WriteLine("Querying Burst blockchain for exchange wallets based on known exchange addresses (this may take a moment)" + Environment.NewLine);
+                using (DataTable dt = Utilities.DataTableQuery(db_connstring, allexchangewallets, Utilities.queryParameters, true))
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("INSERT INTO exchange_wallets (wallet_id) VALUES ");
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        exwallets.Add(string.Format("({0})", row[0]));
+                    }
+                    sb.Append(string.Join(",", exwallets)).Append(";");
+
+                    Console.WriteLine(exwallets.Count + " exchange wallets found. Adding exchange wallets to testdb" + Environment.NewLine);
+                    if (exwallets.Count > 0)
+                    {
+                        Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
+                    }
+                    else
+                    {
+                        Console.WriteLine("No exchange wallets found...Pretty sure your database is blank or out of sync.  Resync and try again.");
+                        return;
+                    }
+                    Console.WriteLine("Exchange wallets added to testdb" + Environment.NewLine);
+
+                    Console.WriteLine("Adding known exchange wallets to testdb" + Environment.NewLine);
+                    foreach (string exchange in addexchanges.Split(','))
+                    {
+                        Utilities.TestDBUpdate(db_connstring, exchange, Utilities.queryParameters, false);
+                    }
+                }
+                Console.WriteLine("Exchange wallets captured" + Environment.NewLine);
+                #endregion
+
+
+                #region Capturing Transactions
+                Utilities.queryParameters.Add("@starttime", starttimestamp);
+                Utilities.queryParameters.Add("@endtime", endtimestamp);
+                Utilities.queryParameters.Add("@burstamount", burstamount);
+                Utilities.queryParameters.Add("@feeamount", feeamount);
+                Utilities.queryParameters.Add("@minfeeamount", minfeeamount);
+                Console.WriteLine("Querying Burst blockchain for all transactions over " + burstamount + " planck between " + starttimestamp + " and " + endtimestamp + Environment.NewLine);
+                using (DataTable dt = Utilities.DataTableQuery(db_connstring, getalltransactions, Utilities.queryParameters, true))
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("INSERT INTO all_weekly_trans (amount, fee, recipient_id, sender_id, timestamp, trans_id) VALUES ");
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        if (dodouble)
+                        {
+                            if (double.Parse(row[1].ToString()) >= feeamount)
+                            {
+                                alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
+                            }
+                            if (double.Parse(row[0].ToString()) >= burstamount)
+                            {
+                                alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
+                                alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
+                            }
+                        }
+                        else
+                        {
+                            alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
+                        }
+                    }
+                    sb.Append(string.Join(",", alltrans)).Append(";");
+
+                    if (alltrans.Count > 0)
+                    {
+                        Console.WriteLine("Adding transactions to testdb" + Environment.NewLine);
+                        Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
+                    }
+                    else
+                    {
+                        Console.WriteLine("No transactions found for the given timeframe...Pretty sure your database is blank or out of sync - or maybe you selected an invalid time range. Try again.");
+                        return;
+                    }
+                }
+                Console.WriteLine("Transactions captured");
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error executing raffle setup: " + ex);
+            }
         }
 
         static async Task RunAsync()
         {
             try
             {
-                #region Capturing app configs from json
-                var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json");
-                var configuration = builder.Build();
-                string allexchangewallets = configuration["allexchangewallets"];
-                string db_server = configuration["db_server"];
-                string db_port = configuration["db_port"];
-                string db_uid = configuration["db_uid"];
-                string db_pwd = configuration["db_pwd"];
-                string db_name = configuration["db_name"];
-                string db_connstring = "Server=" + db_server + ";Port=" + db_port + ";Uid=" + db_uid + ";Pwd=" + db_pwd + ";Database=" + db_name;
-                string addexchanges = configuration["addexchanges"];
-                string getalltransactions = configuration["getalltransactions"];
-                string getqualifyingtransactions = configuration["getqualifyingtransactions"];
-                string getwinnerdata = configuration["getwinnerdata"];
-                string getpoolwallets = configuration["getpoolwallets"];
-                string geteligibility = configuration["geteligibility"];
-                string checkfortable = configuration["checkfortable"];
-                string createexchangetable = configuration["createexchangetable"];
-                string createtranstable = configuration["createtranstable"];
-                double startdayinterval = double.Parse(configuration["startdayinterval"]);
-                double enddayinterval = double.Parse(configuration["enddayinterval"]);
-                double burstamount = double.Parse(configuration["burstamount"]);
-                double feeamount = double.Parse(configuration["feeamount"]);
-                double minfeeamount = double.Parse(configuration["minfeeamount"]);
-                double numofwinners = double.Parse(configuration["numofwinners"]);
-                string burstAccountAPI = configuration["BurstAccountAPI"];
-                string burstTransactionsAPI = configuration["BurstTransactionsAPI"];
-                bool removePoolAddresses = bool.Parse(configuration["removepooladdresses"]);
-                bool dodouble = bool.Parse(configuration["dodouble"]);
-                bool firstrun = true;
-                bool keeprunning = true;
-                List<string> rafflemembers = new List<string>();
-                List<string> rafflewinners = new List<string>();
-                List<string> exwallets = new List<string>();
-                List<string> alltrans = new List<string>();
-                List<string> winnerAddresses = new List<string>();
-                Dictionary<string, string> winnerdata = new Dictionary<string, string>();
-                #endregion
-
-
-                #region Calculating timestamp
-                DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0);
-                DateTime startdate = DateTime.Now.AddDays(startdayinterval);
-                DateTime enddate = DateTime.Now.AddDays(enddayinterval);
-                double starttimestamp = (startdate - burstepoch).TotalSeconds;
-                double endtimestamp = (enddate - burstepoch).TotalSeconds;
-                #endregion
-
-
                 #region Make your selection
                 do
                 {
@@ -124,114 +237,6 @@ namespace Traffic_Award
                     #endregion
 
 
-                    if (firstrun)
-                    {
-                        #region Check for schema
-                        Utilities.queryParameters.Add("@db_name", db_name);
-                        Utilities.queryParameters.Add("@table_name", "exchange_wallets");
-                        if (string.IsNullOrEmpty(Utilities.GetWinnerData(db_connstring, checkfortable, Utilities.queryParameters, true)))
-                        {
-                            Utilities.TestDBUpdate(db_connstring, createexchangetable, Utilities.queryParameters, true);
-                        }
-                        Utilities.queryParameters.Add("@db_name", db_name);
-                        Utilities.queryParameters.Add("@table_name", "all_weekly_trans");
-                        if (string.IsNullOrEmpty(Utilities.GetWinnerData(db_connstring, checkfortable, Utilities.queryParameters, true)))
-                        {
-                            Utilities.TestDBUpdate(db_connstring, createtranstable, Utilities.queryParameters, true);
-                        }
-                        #endregion
-
-                        #region Clearing testdb tables
-                        Console.WriteLine("Clearing exchange wallets from test db" + Environment.NewLine);
-                        Utilities.TestDBUpdate(db_connstring, "TRUNCATE TABLE exchange_wallets;", Utilities.queryParameters, true);
-
-
-                        Console.WriteLine("Clearing transaction table from test db" + Environment.NewLine);
-                        Utilities.TestDBUpdate(db_connstring, "TRUNCATE TABLE all_weekly_trans;", Utilities.queryParameters, true);
-                        #endregion
-
-                        #region Capturing exchange wallets
-                        Console.WriteLine("Querying Burst blockchain for exchange wallets based on known exchange addresses (this may take a moment)" + Environment.NewLine);
-                        using (DataTable dt = Utilities.DataTableQuery(db_connstring, allexchangewallets, Utilities.queryParameters, true))
-                        {
-                            StringBuilder sb = new StringBuilder();
-                            sb.Append("INSERT INTO exchange_wallets (wallet_id) VALUES ");
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                exwallets.Add(string.Format("({0})", row[0]));
-                            }
-                            sb.Append(string.Join(",", exwallets)).Append(";");
-
-                            Console.WriteLine(exwallets.Count + " exchange wallets found. Adding exchange wallets to testdb" + Environment.NewLine);
-                            if (exwallets.Count > 0)
-                            {
-                                Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
-                            }
-                            else
-                            {
-                                Console.WriteLine("No exchange wallets found...Pretty sure your database is blank or out of sync.  Resync and try again.");
-                                return;
-                            }
-                            Console.WriteLine("Exchange wallets added to testdb" + Environment.NewLine);
-
-                            Console.WriteLine("Adding known exchange wallets to testdb" + Environment.NewLine);
-                            foreach (string exchange in addexchanges.Split(','))
-                            {
-                                Utilities.TestDBUpdate(db_connstring, exchange, Utilities.queryParameters, false);
-                            }
-                        }
-                        Console.WriteLine("Exchange wallets captured" + Environment.NewLine);
-                        #endregion
-
-
-                        #region Capturing Transactions
-                        Utilities.queryParameters.Add("@starttime", starttimestamp);
-                        Utilities.queryParameters.Add("@endtime", endtimestamp);
-                        Utilities.queryParameters.Add("@burstamount", burstamount);
-                        Utilities.queryParameters.Add("@feeamount", feeamount);
-                        Utilities.queryParameters.Add("@minfeeamount", minfeeamount);
-                        Console.WriteLine("Querying Burst blockchain for all transactions over " + burstamount + " planck between " + starttimestamp + " and " + endtimestamp + Environment.NewLine);
-                        using (DataTable dt = Utilities.DataTableQuery(db_connstring, getalltransactions, Utilities.queryParameters, true))
-                        {
-                            StringBuilder sb = new StringBuilder();
-                            sb.Append("INSERT INTO all_weekly_trans (amount, fee, recipient_id, sender_id, timestamp, trans_id) VALUES ");
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                if (dodouble)
-                                {
-                                    if (double.Parse(row[1].ToString()) >= feeamount)
-                                    {
-                                        alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
-                                    }
-                                    if (double.Parse(row[0].ToString()) >= burstamount)
-                                    {
-                                        alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
-                                        alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
-                                    }
-                                }
-                                else
-                                {
-                                    alltrans.Add(string.Format("({0},{1},{2},{3},{4},{5})", Utilities.SqlEscapeString(row[0]), Utilities.SqlEscapeString(row[1]), Utilities.SqlEscapeString(row[2]), Utilities.SqlEscapeString(row[3]), Utilities.SqlEscapeString(row[4]), Utilities.SqlEscapeString(row[5])));
-                                }
-                            }
-                            sb.Append(string.Join(",", alltrans)).Append(";");
-
-                            if (alltrans.Count > 0)
-                            {
-                                Console.WriteLine("Adding transactions to testdb" + Environment.NewLine);
-                                Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
-                            }
-                            else
-                            {
-                                Console.WriteLine("No transactions found for the given timeframe...Pretty sure your database is blank or out of sync - or maybe you selected an invalid time range. Try again.");
-                                return;
-                            }
-                        }
-                        Console.WriteLine("Transactions captured");
-                        #endregion
-                    }
-
-
                     #region Capturing qualifying transactions
                     rafflemembers.Clear();
                     Console.WriteLine("Querying testdb to find qualifying transactions for the raffle" + Environment.NewLine);
@@ -248,8 +253,6 @@ namespace Traffic_Award
 
                     #region Remove Pool wallets
                     Console.WriteLine("There are a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
-                    //Console.WriteLine("Do you wish to remove pool wallets from the raffle? (Y/n)" + Environment.NewLine);
-                    //if (Console.ReadKey(true).Key == ConsoleKey.Y)
                     if (removePoolAddresses)
                     {
                         Console.WriteLine("Removing pool wallets..." + Environment.NewLine);
@@ -265,7 +268,6 @@ namespace Traffic_Award
                     #endregion
 
 
-                    firstrun = false;
                     Tuple<bool, string> burstaddress = null;
                     switch (mySelection)
                     {
