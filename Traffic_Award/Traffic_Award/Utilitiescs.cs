@@ -103,12 +103,15 @@ namespace Traffic_Award
         {
             string retval = null;
             bool success = true;
+            //string strresponse = null;
             try
             {
                 HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, api + transid);
                 using (HttpClient httpClient = new HttpClient())
                 {
                     HttpResponseMessage response = await httpClient.SendAsync(requestMessage);
+                    //strresponse = await response.Content.ReadAsStringAsync();
+                    //Console.WriteLine(strresponse);
                     retval = ((Transaction)JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync(), (typeof(Transaction)))).data.sender;
                 }
             }
@@ -116,6 +119,36 @@ namespace Traffic_Award
             {
                 success = false;
                 retval = "" + ex;
+            }
+            return Tuple.Create(success, retval);
+        }
+
+        public static async Task<Tuple<bool, string>> GetTransactionIds(string api, string burstaddress)
+        {
+            string retval = null;
+            bool success = true;
+            //string strresponse = null;
+            List<string> transids = new List<string>();
+            try
+            {
+                HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, api + burstaddress);
+                using (HttpClient httpClient = new HttpClient())
+                {
+                    HttpResponseMessage response = await httpClient.SendAsync(requestMessage);
+                    //strresponse = await response.Content.ReadAsStringAsync();
+                    //Console.WriteLine(strresponse);
+                    transids = ((TransactionIds)JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync(), (typeof(TransactionIds)))).transactionIds;
+                }
+            }
+            catch (Exception ex)
+            {
+                success = false;
+                retval = "" + ex;
+            }
+            foreach (string id in transids)
+            {
+                retval = id;
+                break;
             }
             return Tuple.Create(success, retval);
         }
