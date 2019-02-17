@@ -123,6 +123,7 @@ namespace Traffic_Award
                     } while (string.IsNullOrEmpty(mySelection));
                     #endregion
 
+
                     if (firstrun)
                     {
                         #region Check for schema
@@ -230,6 +231,7 @@ namespace Traffic_Award
                         #endregion
                     }
 
+
                     #region Capturing qualifying transactions
                     rafflemembers.Clear();
                     Console.WriteLine("Querying testdb to find qualifying transactions for the raffle" + Environment.NewLine);
@@ -261,6 +263,7 @@ namespace Traffic_Award
                         Console.WriteLine("There are now a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
                     }
                     #endregion
+
 
                     firstrun = false;
                     Tuple<bool, string> burstaddress = null;
