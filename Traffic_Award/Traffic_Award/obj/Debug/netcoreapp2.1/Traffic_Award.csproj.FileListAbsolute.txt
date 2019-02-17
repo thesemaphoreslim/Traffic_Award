@@ -1,0 +1,10 @@
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.deps.json
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.runtimeconfig.json
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.runtimeconfig.dev.json
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.dll
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Debug\netcoreapp2.1\Traffic_Award.csproj.CoreCompileInputs.cache
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Debug\netcoreapp2.1\Traffic_Award.AssemblyInfoInputs.cache
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Debug\netcoreapp2.1\Traffic_Award.AssemblyInfo.cs
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.pdb
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Debug\netcoreapp2.1\Traffic_Award.dll
+c:\users\matjacks\source\repos\Traffic_Award\Traffic_Award\obj\Debug\netcoreapp2.1\Traffic_Award.pdb
