@@ -10,7 +10,7 @@ How it works:
 
 The app first tries to identify any wallets belonging to or created by exchanges. Currently, only Bittrex and Poloniex wallets are identified. (See the "allexchangewallets" query located in the "appsettings.json" file for more details on how those wallets are identified)  Once found, these wallet ids are stored in the "exchange_wallets" table.
 
-Next, all Burst transactions for the specified time period are queried from the database and stored in the "all_weekly_trans" table. Note, this app was originally intended to be run once a week, but the user can specify a start and end time (startdayinterval/enddayinterval) for the "getalltransactions" query which allows it to find transactions across any timeframe.
+Next, all Burst transactions for the specified time period and with amounts greater than or equal to the "burstamount" (1000 Burst) are queried from the database and stored in the "all_weekly_trans" table. Note, this app was originally intended to be run once a week, but the user can specify a start and end time (startdayinterval/enddayinterval) for the "getalltransactions" query which allows it to find transactions across any timeframe.
 
 The "getqualifyingtransactions" query is then executed to retrieve qualifying accounts. A qualifying account is an address that is sending Burst across the network but NOT to a known exchange wallet.
 
