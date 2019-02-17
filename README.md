@@ -8,9 +8,10 @@ You will need to be utilizing MariaDB as your database type. The application is 
 
 How it works:
 
-The app first tries to identify any wallets belonging to or created by exchanges. Currently, only Bittrex and Poloniex wallets are identified. (See the "allexchangewallets" query located in the "appsettings.json" file for more details on how those wallets are identified)  Once found, these wallet ids are stored in the "exchange_wallets" table.
+The app first tries to identify any wallets belonging to or created by exchanges. Currently, only Bittrex, Poloniex, and HPool wallets are identified. (See the "allexchangewallets" query located in the "appsettings.json" file for more details on how those wallets are identified)  Once found, these wallet ids are stored in the "exchange_wallets" table.
 
 Next, all Burst transactions for the specified time period with A) amounts greater than or equal to the "burstamount" (1000 Burst) and fees greater than or equal to the "minfeeamount" OR B) fees greater than or equal to the "feeamount" are queried from the database and stored in the "all_weekly_trans" table.
+
 There is an optional parameter called "dodouble" that, when set to true, will weight sender transactions differently. For example, a sender creating a transaction with a fee >= "feeamount" will earn an entry and if the same transaction is for an amount >= "burstamount" AND >= "minfeeamount" the sender will earn 2 additional entries. This is done to incentivize both larger transaction fees and regular transactions, while ensuring regular transactions are weighted more heavily.  If "dodouble" is set to false, each qualifying sender earn only 1 entry.
 
 The "getqualifyingtransactions" query is then executed to retrieve qualifying accounts. A qualifying account is a non-exchange/non-pool address that is sending Burst across the network to another non-exchange/non-pool address. (Note: removing of the pool wallets is an optional filter applied via the "getpoolwallets" query, which removes any known pool wallet ids from the list of qualifying transactions. It is enabled by default.)
