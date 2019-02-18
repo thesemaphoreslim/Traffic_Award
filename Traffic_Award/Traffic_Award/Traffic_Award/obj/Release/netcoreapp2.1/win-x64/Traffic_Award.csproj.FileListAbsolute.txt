@@ -1,0 +1,15 @@
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\hostpolicy.dll
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\hostfxr.dll
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.exe
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\appsettings.json
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.deps.json
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.runtimeconfig.json
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.runtimeconfig.dev.json
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.dll
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Release\netcoreapp2.1\win-x64\Traffic_Award.pdb
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.csprojAssemblyReference.cache
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.csproj.CoreCompileInputs.cache
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.AssemblyInfoInputs.cache
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.AssemblyInfo.cs
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.dll
+C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\obj\Release\netcoreapp2.1\win-x64\Traffic_Award.pdb

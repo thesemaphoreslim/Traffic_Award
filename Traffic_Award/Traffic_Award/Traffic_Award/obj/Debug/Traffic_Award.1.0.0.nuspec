@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Traffic_Award</id>
+    <version>1.0.0</version>
+    <authors>Traffic_Award</authors>
+    <owners>Traffic_Award</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Package Description</description>
+    <dependencies>
+      <group targetFramework=".NETCoreApp2.1">
+        <dependency id="Microsoft.Extensions.Configuration.Json" version="2.2.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.NETCore.App" version="2.1.0" exclude="Build,Analyzers" />
+        <dependency id="MySql.Data" version="8.0.15" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.runtimeconfig.json" target="lib\netcoreapp2.1\Traffic_Award.runtimeconfig.json" />
+    <file src="C:\Users\matjacks\Source\Repos\thesemaphoreslim\Traffic_Award\Traffic_Award\Traffic_Award\bin\Debug\netcoreapp2.1\Traffic_Award.dll" target="lib\netcoreapp2.1\Traffic_Award.dll" />
+  </files>
+</package>
