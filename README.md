@@ -8,15 +8,13 @@ You will need to be utilizing MariaDB as your database type. The application is 
 
 How it works:
 
-First, exchange and Mortimer wallet ids are stored in the "exchange_wallets" table.
-
-Next, all Burst transactions for the specified time period with amounts greater than or equal to the "burstamount" (1000 Burst) OR fees greater than or equal to the "feeamount" are queried from the database and stored in the "all_weekly_trans" table.
+To start, Burst transactions for the specified time period with amounts greater than or equal to the "burstamount" (1000 Burst) OR fees greater than or equal to the "feeamount" are queried from the database and stored in the "all_weekly_trans" table.
 
 There is an optional parameter called "dodouble" that, when set to true, will weight sender transactions differently. For example, a sender creating a transaction with a fee >= "feeamount" will earn an entry and if the same transaction is for an amount >= "burstamount" the sender will earn 2 additional entries. This is done to incentivize both larger transaction fees and regular transactions, while ensuring regular transactions are weighted more heavily.  If "dodouble" is set to false, each qualifying sender earns only 1 entry.
 
 The "getqualifyingtransactions" query is then executed to retrieve qualifying accounts. A qualifying account is one that is NOT an exchange, pool, Mortimer, or BMF wallet that is sending Burst across the network to another qualifying account.
 
-When all the qualifying transactions/senders are collected, raffle entries for a single wallet exceeding the "maxraffleentries" value (50) are reduced to the max value. This is done to reduce the potential for "gaming" the system.
+When all the qualifying transactions/senders are collected, raffle entries exceeding the "maxraffleentries" value (50) are reduced to the max value. This is done to reduce the potential for "gaming" the system.
 
 Finally, N wallets are randomly selected from the list of qualifying accounts and displayed in the console window. Exports of the raffle contestants and their entries are exported to "contestants.csv" and the winners are exported to "winners.csv".
 
