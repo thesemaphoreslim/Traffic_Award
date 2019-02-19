@@ -23,11 +23,18 @@ You can check if your BURST address is eligible for the raffle and how many entr
 COMING SOON: Identifying purchases of BURST from exchanges. Buyers get 10x raffle entries! HODL only, no SODL.
 
 Exception sender_ids listed below:
+
 5810532812037266198 = Poloniex Wallet
+
 -3382445822566252642 = brs.hpool.com Wallet
+
 -5063553784103844629 = Bittrex Wallet
+
 -1151854202306370986 = Burst Marketing Fund Wallet
+
 -2687430935354532896 = BMF Pool Wallet
+
 -6170125764990584993 = Mortimer
+
 8909519353220579349 = Dev Wallet
 
