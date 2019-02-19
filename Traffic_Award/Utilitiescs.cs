@@ -35,7 +35,11 @@ namespace Traffic_Award
                 }
                 catch (Exception ex)
                 {
-                    if (showerrors) Console.WriteLine("Error in BlockChainQuery - " + ex);
+                    if (showerrors)
+                    {
+                        Console.WriteLine("Error in BlockChainQuery - " + ex);
+                        Console.ReadKey(true);
+                    }
                 }
                 finally
                 {
@@ -68,7 +72,11 @@ namespace Traffic_Award
                 }
                 catch (Exception ex)
                 {
-                    if (showerrors) Console.WriteLine("Error in TestDBUpdate - " + ex);
+                    if (showerrors)
+                    {
+                        Console.WriteLine("Error in TestDBUpdate - " + ex);
+                        Console.ReadKey(true);
+                    }
                 }
                 finally
                 {
@@ -104,7 +112,11 @@ namespace Traffic_Award
             }
             catch (Exception ex)
             {
-                if (showerrors) Console.WriteLine("Error in TestDBUpdate - " + ex);
+                if (showerrors)
+                {
+                    Console.WriteLine("Error in TestDBUpdate - " + ex);
+                    Console.ReadKey(true);
+                }
             }
             finally
             {

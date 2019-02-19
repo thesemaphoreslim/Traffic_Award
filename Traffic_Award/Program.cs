@@ -49,7 +49,7 @@ namespace Traffic_Award
         static string db_pwd = configuration["db_pwd"];
         static string db_name = configuration["db_name"];
         static string db_connstring = "Server=" + db_server + ";Port=" + db_port + ";Uid=" + db_uid + ";Pwd=" + db_pwd + ";Database=" + db_name;
-        static string addexchanges = configuration["addexchanges"];
+        //static string addexchanges = configuration["addexchanges"];
         static string getalltransactions = configuration["getalltransactions"];
         static string getqualifyingtransactions = configuration["getqualifyingtransactions"];
         static string getwinnerdata = configuration["getwinnerdata"];
@@ -129,33 +129,35 @@ namespace Traffic_Award
                 #endregion
 
                 #region Capturing exchange wallets
-                Console.WriteLine("Querying Burst blockchain for exchange wallets based on known exchange addresses (this may take a moment)" + Environment.NewLine);
-                using (DataTable dt = Utilities.DataTableQuery(db_connstring, allexchangewallets, Utilities.queryParameters, true))
-                {
+                Console.WriteLine("Adding except for exchange wallets.");
+                Utilities.TestDBUpdate(db_connstring, allexchangewallets, Utilities.queryParameters, false);
+                //Console.WriteLine("Querying Burst blockchain for exchange wallets based on known exchange addresses (this may take a moment)" + Environment.NewLine);
+                //using (DataTable dt = Utilities.DataTableQuery(db_connstring, allexchangewallets, Utilities.queryParameters, true))
+                //{
                     
-                    sb.Append("INSERT INTO exchange_wallets (wallet_id) VALUES ");
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        exwallets.Add(string.Format("({0})", row[0]));
-                    }
-                    sb.Append(string.Join(",", exwallets)).Append(";");
+                //    sb.Append("INSERT INTO exchange_wallets (wallet_id) VALUES ");
+                //    foreach (DataRow row in dt.Rows)
+                //    {
+                //        exwallets.Add(string.Format("({0})", row[0]));
+                //    }
+                //    sb.Append(string.Join(",", exwallets)).Append(";");
 
-                    if (exwallets.Count > 0)
-                    {
-                        Console.WriteLine(exwallets.Count + " exchange wallets found. Storing exchange wallets for later..." + Environment.NewLine);
-                        Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
-                    }
-                    else
-                    {
-                        Console.WriteLine("No exchange wallets found...Pretty sure your database is blank or out of sync.  Resync and try again.");
-                        return;
-                    }
-                    foreach (string exchange in addexchanges.Split(','))
-                    {
-                        Utilities.TestDBUpdate(db_connstring, exchange, Utilities.queryParameters, false);
-                    }
-                    sb.Clear();
-                }
+                //    if (exwallets.Count > 0)
+                //    {
+                //        Console.WriteLine(exwallets.Count + " exchange wallets found. Storing exchange wallets for later..." + Environment.NewLine);
+                //        Utilities.TestDBUpdate(db_connstring, sb.ToString(), Utilities.queryParameters, true);
+                //    }
+                //    else
+                //    {
+                //        Console.WriteLine("No exchange wallets found...Pretty sure your database is blank or out of sync.  Resync and try again.");
+                //        return;
+                //    }
+                //    foreach (string exchange in addexchanges.Split(','))
+                //    {
+                //        Utilities.TestDBUpdate(db_connstring, exchange, Utilities.queryParameters, false);
+                //    }
+                //    sb.Clear();
+                //}
                 #endregion
 
 
@@ -288,14 +290,6 @@ namespace Traffic_Award
 
 
                     #region Converting Database IDs to Account IDs
-                    //foreach (string member in rafflemembers)
-                    //{
-                    //    if (!distinctmembers.Contains(member))
-                    //    {
-                    //        distinctmembers.Add(member);
-                    //    }
-                    //}
-                    //foreach (string member in distinctmembers)
                     foreach (string member in rafflemembers.Distinct())
                     {
                         tasks.Add(Task.Run(async () =>
@@ -324,9 +318,13 @@ namespace Traffic_Award
                             } while (index >= 0);
                         }
                     }
-                    int reducecount = 0;
+                    int reducecount = -1;
                     //Console.WriteLine("Here are your finalists...");
                     var distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
+                    if (distinctlist.Count() > 0)
+                    {
+                        Console.WriteLine("Reducing entries to meet the maximum allowed (" + maxraffleentries + ")" + Environment.NewLine);
+                    }
                     foreach (var member in distinctlist)
                     {
                         reducecount = 0;
@@ -346,7 +344,12 @@ namespace Traffic_Award
                                     break;
                                 }
                             } while (reducecount < (member.count - maxraffleentries));
+                            Console.WriteLine("Reduced " + member.member + " entries from " + member.count + " to " + maxraffleentries);
                         }
+                    }
+                    if (reducecount >= 0)
+                    {
+                        Console.WriteLine(Environment.NewLine + "There are now a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
                     }
                     sb.Clear();
                     distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
