@@ -10,15 +10,13 @@ namespace Traffic_Award
 {
     class Utilities
     {
-        public static Dictionary<string, object> queryParameters = new Dictionary<string, object>();
-
-        public static DataTable DataTableQuery(string connectionstring, string query, Dictionary<string, object> parameters, bool showerrors)
+        public static DataTable DataTableQuery(string query, Dictionary<string, object> parameters, bool showerrors)
         {
             using (DataTable dt = new DataTable())
             {
                 try
                 {
-                    using (var mariadbconnection = new MySqlConnection(connectionstring))
+                    using (var mariadbconnection = new MySqlConnection(Program.db_connstring))
                     {
                         mariadbconnection.Open();
                         using (MySqlDataAdapter adapter = new MySqlDataAdapter(query, mariadbconnection))
@@ -43,19 +41,48 @@ namespace Traffic_Award
                 }
                 finally
                 {
-                    Utilities.queryParameters.Clear();
+                    Program.queryParameters.Clear();
                 }
                 return dt;
             }
         }
 
-        public static DataTable TestDBUpdate(string connectionstring, string query, Dictionary<string, object> parameters, bool showerrors)
+        public static List<string> GetRecipients(string recipient, List<string> allrecipients)
+        {
+            List<string> recipients = new List<string>();
+            Program.queryParameters.Add("@starttime", Program.starttimestamp);
+            Program.queryParameters.Add("@recipient", recipient);
+            using (DataTable dt = DataTableQuery(Program.getrecipients, Program.queryParameters, true))
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+
+                    if (row[0].ToString() == Program.bittid || row[0].ToString() == Program.poloid || Program.poolwallets.Contains(row[0].ToString()))
+                    {
+                        allrecipients.Add(row[0].ToString());
+                        continue;
+                    }
+                    else if (!allrecipients.Contains(row[0].ToString()))
+                    {
+                        allrecipients.Add(row[0].ToString());
+                        GetRecipients(row[0].ToString(), allrecipients);
+                    }
+                    else
+                    {
+                        allrecipients.Add(row[0].ToString());
+                    }
+                }
+            }
+            return allrecipients;
+        }
+
+        public static DataTable TestDBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
         {
             using (DataTable dt = new DataTable())
             {
                 try
                 {
-                    using (var mariadbconnection = new MySqlConnection(connectionstring))
+                    using (var mariadbconnection = new MySqlConnection(Program.db_connstring))
                     {
                         mariadbconnection.Open();
                         using (MySqlCommand cmd = new MySqlCommand(query, mariadbconnection))
@@ -80,18 +107,18 @@ namespace Traffic_Award
                 }
                 finally
                 {
-                    Utilities.queryParameters.Clear();
+                    Program.queryParameters.Clear();
                 }
                 return dt;
             }
         }
 
-        public static string GetWinnerData(string connectionstring, string query, Dictionary<string, object> parameters, bool showerrors)
+        public static string GetWinnerData(string query, Dictionary<string, object> parameters, bool showerrors)
         {
             string retval = null;
             try
             {
-                using (var mariadbconnection = new MySqlConnection(connectionstring))
+                using (var mariadbconnection = new MySqlConnection(Program.db_connstring))
                 {
                     mariadbconnection.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, mariadbconnection))
@@ -120,7 +147,7 @@ namespace Traffic_Award
             }
             finally
             {
-                Utilities.queryParameters.Clear();
+                Program.queryParameters.Clear();
             }
             return retval;
         }
