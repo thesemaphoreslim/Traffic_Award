@@ -38,10 +38,11 @@ namespace Traffic_Award
 
     public class ExCheck
     {
-        //public long id { get; set; }
         public string recipientid { get; set; }
         public bool penalize { get; set; }
         public long penalid { get; set; }
+        public bool waschecked { get; set; }
+        public List<string> receiverlist { get; set; }
     }
 
     class Program
@@ -89,7 +90,7 @@ namespace Traffic_Award
         static string winnersfile = configuration["winnersfile"];
         static bool keeprunning = true;
         static ConcurrentDictionary<string, string> addresslist = new ConcurrentDictionary<string, string>();
-        static List<string> rafflemembers = new List<string>();
+        public static List<string> rafflemembers = new List<string>();
         static List<string> rafflewinners = new List<string>();
         static List<string> alltrans = new List<string>();
         static List<Task> tasks = new List<Task>();
@@ -98,9 +99,12 @@ namespace Traffic_Award
         static Tuple<bool, string> burstaddress = Tuple.Create<bool, string>(false, null);
         public static Dictionary<string, object> queryParameters = new Dictionary<string, object>();
         static List<string> prelimexchange = new List<string>();
-        static List<ExCheck> excheck = new List<ExCheck>();
+        public static List<ExCheck> excheck = new List<ExCheck>();
         static List<string> allrecipients = new List<string>();
+        static int transactionaward = int.Parse(configuration["transactionaward"]);
+        static int exchangeaward = int.Parse(configuration["exchangeaward"]);
         #endregion
+
 
         #region Calculating timestamp
         public static DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0);
@@ -210,7 +214,7 @@ namespace Traffic_Award
                         Console.WriteLine("********************************************" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("Make your selection:" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("A) Execute Raffle" + Environment.NewLine + Environment.NewLine);
-                        Console.WriteLine("B) Check Wallet Eligibility" + Environment.NewLine + Environment.NewLine);
+                        Console.WriteLine("B) Check Address Eligibility" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("X) Exit" + Environment.NewLine + Environment.NewLine);
                         switch (Console.ReadKey(true).Key)
                         {
@@ -230,11 +234,26 @@ namespace Traffic_Award
                         }
                     } while (string.IsNullOrEmpty(mySelection));
                     #endregion
+                                       
+
+                    #region Collect Pool wallets
+                    if (removePoolAddresses)
+                    {
+                        //Console.WriteLine("Collecting pool wallets..." + Environment.NewLine);
+                        using (DataTable dt = Utilities.DataTableQuery(getpoolwallets, queryParameters, true))
+                        {
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                poolwallets.Add(row[0].ToString());
+                            }
+                        }
+                    }
+                    #endregion
 
 
                     #region Capturing qualifying transactions
                     rafflemembers.Clear();
-                    Console.WriteLine("Querying blockchain to find qualifying transactions for the raffle" + Environment.NewLine);
+                    //Console.WriteLine("Querying blockchain to find qualifying transactions for the raffle" + Environment.NewLine);
                     excheck.Clear();
                     queryParameters.Add("@poloid", poloid);
                     queryParameters.Add("@bittid", bittid);
@@ -247,71 +266,16 @@ namespace Traffic_Award
                     {
                         foreach (DataRow row in dt.Rows)
                         {
-                            excheck.Add(new ExCheck { recipientid = row[0].ToString(), penalize = false, penalid = -1 });
+                            excheck.Add(new ExCheck { recipientid = row[0].ToString(), penalize = false, penalid = -1, receiverlist = new List<string>(), waschecked = false });
                         }
                     }
                     Console.WriteLine("Checking all " + excheck.Count + " qualifying transactions for sell activity. This may take a moment." + Environment.NewLine);
-                    foreach (ExCheck recipient in excheck)
-                    {
-                        allrecipients.Clear();
-                        allrecipients = Utilities.GetRecipients(recipient.recipientid, allrecipients);
-                        int i = 0;
-                        foreach (string exchange in allrecipients)
-                        {
-                            if (exchange == poloid || exchange == bittid)
-                            {
-                                if (excheck.Select(x => x).Where(y => y.recipientid == recipient.recipientid && y.penalize == true && y.penalid == i).Count() > 0)
-                                {
-                                    recipient.penalize = false;
-                                    recipient.penalid = i;
-                                }
-                                else
-                                {
-                                    recipient.penalize = true;
-                                    recipient.penalid = i;
-                                    break;
-                                }
-                            }
-                            i++;
-                        }
-                    }
-                    foreach (ExCheck recipient in excheck)
-                    {
-                        int loopcount = 0;
-                        if (recipient.penalize)
-                        {
-                            loopcount = 1;
-                        }
-                        else
-                        {
-                            loopcount = 2;
-                        }
-                        for (int i = 0; i < loopcount; i++)
-                        {
-                            rafflemembers.Add(recipient.recipientid);
-                        }
-                    }
-                    #endregion
-
-
-                    #region Remove Pool wallets
-                    Console.WriteLine("There are a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
-                    if (removePoolAddresses)
-                    {
-                        Console.WriteLine("Collecting pool wallets..." + Environment.NewLine);
-                        using (DataTable dt = Utilities.DataTableQuery(getpoolwallets, queryParameters, true))
-                        {
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                poolwallets.Add(row[0].ToString());
-                            }
-                        }
-                    }
+                    Utilities.AddRaffleEntries(transactionaward);
                     #endregion
 
 
                     #region Capture qualifying exchange purchases
-                    Console.WriteLine("Querying blockchain to find qualifying exchange purchases" + Environment.NewLine);
+                    //Console.WriteLine("Querying blockchain to find qualifying exchange purchases" + Environment.NewLine);
                     excheck.Clear();
                     queryParameters.Add("@starttime", starttimestamp);
                     queryParameters.Add("@endtime", endtimestamp);
@@ -326,49 +290,12 @@ namespace Traffic_Award
                             excheck.Add(new ExCheck { recipientid = row[0].ToString(), penalize = false, penalid = -1 });
                         }
                     }
-
                     Console.WriteLine("Checking all " + excheck.Count + " exchange purchases for sell activity. This may take a moment." + Environment.NewLine);
-                    foreach (ExCheck recipient in excheck)
-                    {
-                        allrecipients.Clear();
-                        allrecipients = Utilities.GetRecipients(recipient.recipientid, allrecipients);
-                        int i = 0;
-                        foreach (string exchange in allrecipients)
-                        {
-                            if (exchange == poloid || exchange == bittid)
-                            {
-                                if (excheck.Select(x => x).Where(y => y.recipientid == recipient.recipientid && y.penalize == true && y.penalid == i).Count() > 0)
-                                {
-                                    recipient.penalize = false;
-                                    recipient.penalid = i;
-                                }
-                                else
-                                {
-                                    recipient.penalize = true;
-                                    recipient.penalid = i;
-                                    break;
-                                }
-                            }
-                            i++;
-                        }
-                    }
-                    foreach (ExCheck recipient in excheck)
-                    {
-                        int loopcount = 0;
-                        if (recipient.penalize)
-                        {
-                            loopcount = 1;
-                        }
-                        else
-                        {
-                            loopcount = 5;
-                        }
-                        for (int i = 0; i < loopcount; i++)
-                        {
-                            rafflemembers.Add(recipient.recipientid);
-                        }
-                    }
+                    Utilities.AddRaffleEntries(exchangeaward);
                     #endregion
+
+
+                    Console.WriteLine("There are a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
 
 
                     #region Converting Database IDs to Account IDs
@@ -467,15 +394,12 @@ namespace Traffic_Award
                             }
                             else
                             {
-                                Console.WriteLine(Environment.NewLine + Environment.NewLine + "Sorry, you are not eligible for the raffle...");
-                                Console.WriteLine("Send Burst to friends, make purchases from the marketplace,");
-                                Console.WriteLine("or donate to our marketing/development efforts to become eligible!" + Environment.NewLine + Environment.NewLine);
+                                Console.WriteLine(Environment.NewLine + Environment.NewLine + "No raffle entries found for this address." + Environment.NewLine);
                                 Console.WriteLine("Press any key to continue");
                                 Console.ReadKey(true);
                                 break;
                             }
                             #endregion
-                            //break;
                         case "runraffle":
                             #region Retrieving raffle winners
                             Console.WriteLine("Retrieving " + numofwinners + " raffle winners at random" + Environment.NewLine);
@@ -490,7 +414,6 @@ namespace Traffic_Award
                                 {
                                     random = rnd.Next(rafflemembers.Count);
                                     winner = rafflemembers[random];
-                                    //Console.WriteLine("Winner! " + winner);
                                     rafflemembers.RemoveAll(item => item == winner);
                                     rafflewinners.Add(winner);
                                     if (rafflemembers.Count == 0) break;
@@ -505,8 +428,6 @@ namespace Traffic_Award
 
                             #region Retrieving BURST address for each winner
                             sb.Clear();
-                            //Console.WriteLine("Retrieving BURST address for each raffle winner" + Environment.NewLine);
-
                             foreach (string winner in rafflewinners)
                             {
                                 burstaddress = await Utilities.GetBurstAddress(burstAddressAPI, winner);

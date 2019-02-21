@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -51,6 +52,7 @@ namespace Traffic_Award
         {
             List<string> recipients = new List<string>();
             Program.queryParameters.Add("@starttime", Program.starttimestamp);
+            Program.queryParameters.Add("@endtime", Program.endtimestamp);
             Program.queryParameters.Add("@recipient", recipient);
             using (DataTable dt = DataTableQuery(Program.getrecipients, Program.queryParameters, true))
             {
@@ -74,6 +76,61 @@ namespace Traffic_Award
                 }
             }
             return allrecipients;
+        }
+
+        public static void AddRaffleEntries(int reward)
+        {
+            List<string> allrecipients = new List<string>();
+            for (int n = 0; n < Program.excheck.Count; n++)
+            {
+                ExCheck recipient = Program.excheck[n];
+                int i = 0;
+                allrecipients = Program.excheck.FirstOrDefault(y => y.waschecked == true && y.recipientid == recipient.recipientid)?.receiverlist;
+                if (allrecipients == null)
+                {
+                    allrecipients = Utilities.GetRecipients(recipient.recipientid, new List<string>());
+                }
+                recipient.receiverlist = allrecipients;
+                foreach (string exchange in allrecipients)
+                {
+                    if (exchange == Program.poloid || exchange == Program.bittid)
+                    {
+                        if (Program.excheck.Select(x => x).Where(y => y.recipientid == recipient.recipientid && y.penalize == true && y.penalid == i).Count() > 0)
+                        {
+                            recipient.penalize = false;
+                            recipient.penalid = i;
+                        }
+                        else
+                        {
+                            recipient.penalize = true;
+                            recipient.penalid = i;
+                            break;
+                        }
+                    }
+                    i++;
+                }
+                recipient.waschecked = true;
+            }
+            foreach (ExCheck recipient in Program.excheck)
+            {
+                int loopcount = 0;
+                if (!recipient.penalize)
+                {
+                    loopcount = reward;
+                }
+                //if (recipient.penalize)
+                //{
+                //    loopcount = 1;
+                //}
+                //else
+                //{
+                //    loopcount = 5;
+                //}
+                for (int i = 0; i < loopcount; i++)
+                {
+                    Program.rafflemembers.Add(recipient.recipientid);
+                }
+            }
         }
 
         public static DataTable TestDBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
