@@ -11,7 +11,7 @@ A qualifying address is one that is not:
 
 When a valid sender/transaction is identified, a recursive function is called to collect all addresses to which this address has sent Burst over the current raffle period. If any of the addresses or any of their fellows (again, recursive) have sold to an exchange then the current entry(s) will be voided.
 
-Currently, I am only monitoring the Poloniex and Bittrex addresses for purchases. If you can provide the Burst wallet address of any other exchanges supporting Burst, I would be happy to integrate them into the Raffle.
+Currently, I am only monitoring the Poloniex, Bittrex, and Livecoin addresses for purchases. If you can provide the Burst wallet address of any other exchanges supporting Burst, I would be happy to integrate them into the Raffle.
 
 This application is written in .NET Core so though each package is large, it is completely self-contained and requires no additional libraries or references.
 
