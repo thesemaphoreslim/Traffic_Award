@@ -45,6 +45,19 @@ namespace Traffic_Award
         public List<string> receiverlist { get; set; }
     }
 
+    public class Summary
+    {
+        public string walletid { get; set; }
+        public List<DetailSummary> details { get; set; }
+    }
+
+    public class DetailSummary
+    {
+        public int exchangentries { get; set; }
+        public int transentries { get; set; }
+        public int reductions { get; set; }
+    }
+
     class Program
     {
         #region Capturing app configs from json
@@ -64,6 +77,7 @@ namespace Traffic_Award
         public static string bmfpid = configuration["bmfpid"];
         public static string mortid = configuration["mortid"];
         public static string devid = configuration["devid"];
+        public static string liveid = configuration["liveid"];
         static string getalltransactions = configuration["getalltransactions"];
         static string getqualifyingtransactions = configuration["getqualifyingtransactions"];
         static string getwinnerdata = configuration["getwinnerdata"];
@@ -74,6 +88,9 @@ namespace Traffic_Award
         static string checkfortable = configuration["checkfortable"];
         static string createexchangetable = configuration["createexchangetable"];
         static string createtranstable = configuration["createtranstable"];
+        static string createsummarytable = configuration["createsummarytable"];
+        static string getsummarytable = configuration["getsummarydata"];
+        public static string summarytableupsert = configuration["summarytableupsert"];
         public static double startdayinterval = double.Parse(configuration["startdayinterval"]);
         public static double enddayinterval = double.Parse(configuration["enddayinterval"]);
         static double exchangemin = double.Parse(configuration["exchangemin"]);
@@ -98,11 +115,12 @@ namespace Traffic_Award
         static StringBuilder sb = new StringBuilder();
         static Tuple<bool, string> burstaddress = Tuple.Create<bool, string>(false, null);
         public static Dictionary<string, object> queryParameters = new Dictionary<string, object>();
-        static List<string> prelimexchange = new List<string>();
         public static List<ExCheck> excheck = new List<ExCheck>();
-        static List<string> allrecipients = new List<string>();
-        static int transactionaward = int.Parse(configuration["transactionaward"]);
-        static int exchangeaward = int.Parse(configuration["exchangeaward"]);
+        public static List<string> exchangewallets = new List<string>{ poloid, bittid, liveid };
+        public static int transactionaward = int.Parse(configuration["transactionaward"]);
+        public static int exchangeaward = int.Parse(configuration["exchangeaward"]);
+        public static List<Summary> summary = new List<Summary>();
+        static string displaystr = null;
         #endregion
 
 
@@ -110,13 +128,14 @@ namespace Traffic_Award
         public static DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0);
         public static DateTime startdate = DateTime.Now.AddDays(startdayinterval);
         public static DateTime enddate = DateTime.Now.AddDays(enddayinterval);
+        public static string startdatetime = configuration["startdatetime"];
+        public static string enddatetime = configuration["enddatetime"];
         public static double starttimestamp = (startdate - burstepoch).TotalSeconds;
         public static double endtimestamp = (enddate - burstepoch).TotalSeconds;
         #endregion
 
         static void Main(string[] args)
         {
-            RunSetup();
             RunAsync().GetAwaiter().GetResult();
         }
         
@@ -125,33 +144,55 @@ namespace Traffic_Award
             try
             {
                 Console.Clear();
-                Console.WriteLine(Environment.NewLine + Environment.NewLine + "Running initial setup...this may take a moment." + Environment.NewLine + Environment.NewLine);
+                if (DateTime.TryParse(startdatetime, out startdate))
+                {
+                    starttimestamp = (startdate - burstepoch).TotalSeconds;
+                    Console.WriteLine("Using static start date/time of " + startdatetime);
+                    Console.WriteLine("Press any key to continue");
+                    Console.ReadKey(true);
+                }
+                if (DateTime.TryParse(enddatetime, out enddate))
+                {
+                    endtimestamp = (enddate - burstepoch).TotalSeconds;
+                    Console.WriteLine("Using static end date/time of " + enddatetime);
+                    Console.WriteLine("Press any key to continue");
+                    Console.ReadKey(true);
+                }
+                //Console.WriteLine(Environment.NewLine + Environment.NewLine + "Running initial setup...this may take a moment." + Environment.NewLine + Environment.NewLine);
                 #region Check for schema
-                queryParameters.Add("@db_name", db_name);
                 queryParameters.Add("@table_name", "exchange_wallets");
+                queryParameters.Add("@db_name", db_name);
                 if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
                 {
                     Utilities.TestDBUpdate(createexchangetable, queryParameters, true);
                 }
-                queryParameters.Add("@db_name", db_name);
                 queryParameters.Add("@table_name", "all_weekly_trans");
+                queryParameters.Add("@db_name", db_name);
                 if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
                 {
                     Utilities.TestDBUpdate(createtranstable, queryParameters, true);
+                }
+                queryParameters.Add("@table_name", "raffle_summary");
+                queryParameters.Add("@db_name", db_name);
+                if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
+                {
+                    Utilities.TestDBUpdate(createsummarytable, queryParameters, true);
                 }
                 #endregion
 
                 #region Clearing testdb tables
                 Utilities.TestDBUpdate("TRUNCATE TABLE exchange_wallets;", queryParameters, true);
                 Utilities.TestDBUpdate("TRUNCATE TABLE all_weekly_trans;", queryParameters, true);
+                Utilities.TestDBUpdate("TRUNCATE TABLE raffle_summary;", queryParameters, true);
                 #endregion
 
                 #region Capturing exchange wallets
-                Console.WriteLine("Adding except for exchange wallets.");
+                //Console.WriteLine("Adding except for exchange wallets.");
                 queryParameters.Add("@poloid", poloid);
                 queryParameters.Add("@bittid", bittid);
                 queryParameters.Add("@brsid", brsid);
                 queryParameters.Add("@mortid", mortid);
+                queryParameters.Add("@liveid", liveid);
                 Utilities.TestDBUpdate(allexchangewallets, queryParameters, false);
                 #endregion
 
@@ -162,7 +203,7 @@ namespace Traffic_Award
                 queryParameters.Add("@burstamount", burstamount);
                 queryParameters.Add("@feeamount", feeamount);
                 queryParameters.Add("@minfeeamount", minfeeamount);
-                Console.WriteLine("Querying Burst blockchain for all transactions over " + burstamount + " planck between " + starttimestamp + " and " + endtimestamp + Environment.NewLine);
+                //Console.WriteLine("Querying Burst blockchain for all transactions over " + burstamount + " planck between " + starttimestamp + " and " + endtimestamp + Environment.NewLine);
                 using (DataTable dt = Utilities.DataTableQuery(getalltransactions, queryParameters, true))
                 {
                     sb.Append("INSERT INTO all_weekly_trans (amount, fee, recipient_id, sender_id, timestamp, trans_id) VALUES ");
@@ -178,9 +219,9 @@ namespace Traffic_Award
                     else
                     {
                         Console.WriteLine("No transactions found for the given timeframe...Pretty sure your database is blank or out of sync - or maybe you selected an invalid time range. Try again.");
+                        Console.ReadKey(true);
                         return;
                     }
-                    sb.Clear();
                 }
                 #endregion
             }
@@ -204,7 +245,9 @@ namespace Traffic_Award
                     tasks.Clear();
                     poolwallets.Clear();
                     excheck.Clear();
+                    sb.Clear();
                     burstaddress = Tuple.Create<bool, string>(false, null);
+                    displaystr = null;
                     string mySelection = null;
                     do
                     {
@@ -215,26 +258,38 @@ namespace Traffic_Award
                         Console.WriteLine("Make your selection:" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("A) Execute Raffle" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("B) Check Address Eligibility" + Environment.NewLine + Environment.NewLine);
+                        Console.WriteLine("C) Export Leaderboard" + Environment.NewLine + Environment.NewLine);
                         Console.WriteLine("X) Exit" + Environment.NewLine + Environment.NewLine);
                         switch (Console.ReadKey(true).Key)
                         {
                             case ConsoleKey.A:
                                 Console.Clear();
                                 Console.WriteLine("Executing Raffle..." + Environment.NewLine);
+                                displaystr = "Executing Raffle...";
                                 mySelection = "runraffle";
                                 break;
                             case ConsoleKey.B:
                                 Console.Clear();
                                 Console.WriteLine("Checking Eligibility..." + Environment.NewLine);
+                                displaystr = "Checking Eligibility...";
                                 mySelection = "checkeligibility";
+                                break;
+                            case ConsoleKey.C:
+                                Console.Clear();
+                                Console.WriteLine("Exporting Leaderboard as csv" + Environment.NewLine);
+                                displaystr = "Exporting Leaderboard as csv...";
+                                mySelection = "leaderboard";
                                 break;
                             case ConsoleKey.X:
                                 Console.WriteLine("Exiting..." + Environment.NewLine);
                                 return;
                         }
                     } while (string.IsNullOrEmpty(mySelection));
+                    RunSetup();
                     #endregion
-                                       
+
+                    Console.WriteLine("If you hang here, there may be a problem with your database connection.");
+                    Console.WriteLine("Close any open connections or restart the application.");
 
                     #region Collect Pool wallets
                     if (removePoolAddresses)
@@ -248,6 +303,8 @@ namespace Traffic_Award
                             }
                         }
                     }
+                    Console.Clear();
+                    Console.WriteLine(displaystr + Environment.NewLine);
                     #endregion
 
 
@@ -262,6 +319,7 @@ namespace Traffic_Award
                     queryParameters.Add("@bmfid", bmfid);
                     queryParameters.Add("@bmfpid", bmfpid);
                     queryParameters.Add("@devid", devid);
+                    queryParameters.Add("@liveid", liveid);
                     using (DataTable dt = Utilities.DataTableQuery(getqualifyingtransactions, queryParameters, true))
                     {
                         foreach (DataRow row in dt.Rows)
@@ -283,6 +341,7 @@ namespace Traffic_Award
                     queryParameters.Add("@poloid", poloid);
                     queryParameters.Add("@bittid", bittid);
                     queryParameters.Add("@devid", devid);
+                    queryParameters.Add("@liveid", liveid);
                     using (DataTable dt = Utilities.DataTableQuery(getexchangetrans, queryParameters, true))
                     {
                         foreach (DataRow row in dt.Rows)
@@ -315,17 +374,48 @@ namespace Traffic_Award
                         }));
                     }
                     Task.WaitAll(tasks.ToArray());
+                    tasks.Clear();
                     int index = 0;
                     foreach (KeyValuePair<string, string> address in addresslist)
                     {
-                        if (address.Key != address.Value)
+                        queryParameters.Add("@wallet_address", address.Value);
+                        queryParameters.Add("@wallet_id", address.Key);
+                        Utilities.TestDBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
+                        do
                         {
-                            do
+                            index = rafflemembers.IndexOf(address.Key);
+                            if (index >= 0)
                             {
-                                index = rafflemembers.IndexOf(address.Key);
-                                if (index >= 0) rafflemembers[index] = address.Value;
-                            } while (index >= 0);
+                                rafflemembers[index] = address.Value;
+                            }
+                        } while (index >= 0);
+                    }
+                    addresslist.Clear();
+                    using (DataTable dt = Utilities.DataTableQuery("SELECT wallet_id from raffle_summary where wallet_address IS NULL", queryParameters, true))
+                    {
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            tasks.Add(Task.Run(async () =>
+                            {
+                                Tuple<bool, string> account = await Utilities.GetStringID(burstStringID, row[0].ToString());
+                                if (account.Item1)
+                                {
+                                    account = await Utilities.GetBurstAddress(burstAddressAPI, account.Item2);
+                                    if (account.Item1)
+                                    {
+                                        addresslist.TryAdd(row[0].ToString(), account.Item2);
+                                    }
+                                }
+                            }));
                         }
+                    }
+                    Task.WaitAll(tasks.ToArray());
+                    tasks.Clear();
+                    foreach (KeyValuePair<string, string> address in addresslist)
+                    {
+                        queryParameters.Add("@wallet_address", address.Value);
+                        queryParameters.Add("@wallet_id", address.Key);
+                        Utilities.TestDBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
                     }
                     int reducecount = -1;
                     var distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
@@ -333,6 +423,7 @@ namespace Traffic_Award
                     {
                         if (member.count > maxraffleentries)
                         {
+                            queryParameters.Add("@total_entries", maxraffleentries);
                             if (reducecount < 0)
                             {
                                 Console.WriteLine("Reducing entries to meet the maximum allowed (" + maxraffleentries + ")" + Environment.NewLine);
@@ -353,16 +444,26 @@ namespace Traffic_Award
                             } while (reducecount < (member.count - maxraffleentries));
                             Console.WriteLine("Reduced " + member.member + " entries from " + member.count + " to " + maxraffleentries);
                         }
+                        else
+                        {
+                            queryParameters.Add("@total_entries", member.count);
+                        }
+                        queryParameters.Add("@wallet_address", member.member);
+                        Utilities.TestDBUpdate("UPDATE raffle_summary SET total_entries=@total_entries WHERE wallet_address=@wallet_address;", Program.queryParameters, true);
                     }
                     if (reducecount >= 0)
                     {
                         Console.WriteLine(Environment.NewLine + "There are now a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
                     }
                     sb.Clear();
-                    distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
-                    foreach (var member in distinctlist)
+                    //distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
+                    using (DataTable dt = Utilities.DataTableQuery("SELECT wallet_address, total_entries, exchange_entries, trans_entries, reductions FROM raffle_summary order by total_entries desc;", queryParameters, true))
                     {
-                        sb.Append(member.member).Append(",").Append(member.count).Append(Environment.NewLine);
+                        sb.Append("Burst Address,Total Entries,Exchange Entries,Transaction Entries,Reductions").Append(Environment.NewLine);
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            sb.Append(row[0].ToString()).Append(",").Append(row[1].ToString()).Append(",").Append(row[2].ToString()).Append(",").Append(row[3].ToString()).Append(",").Append(row[4].ToString()).Append(Environment.NewLine);
+                        }
                     }
                     try
                     {
@@ -377,6 +478,11 @@ namespace Traffic_Award
 
                     switch (mySelection)
                     {
+                        case "leaderboard":
+                            Console.WriteLine("Leaderboard exported as 'contestant.csv'" + Environment.NewLine);
+                            Console.WriteLine("Press any key to continue");
+                            Console.ReadKey(true);
+                            break;
                         case "checkeligibility":
                             #region Checking eligibility
                             string yourburstaddress = null;
@@ -403,7 +509,6 @@ namespace Traffic_Award
                         case "runraffle":
                             #region Retrieving raffle winners
                             Console.WriteLine("Retrieving " + numofwinners + " raffle winners at random" + Environment.NewLine);
-                            
                             if (rafflemembers.Count > 0)
                             {
                                 if (rafflemembers.Count < numofwinners) numofwinners = rafflemembers.Count;

@@ -54,26 +54,37 @@ namespace Traffic_Award
             Program.queryParameters.Add("@starttime", Program.starttimestamp);
             Program.queryParameters.Add("@endtime", Program.endtimestamp);
             Program.queryParameters.Add("@recipient", recipient);
-            using (DataTable dt = DataTableQuery(Program.getrecipients, Program.queryParameters, true))
+            try
             {
-                foreach (DataRow row in dt.Rows)
+                using (DataTable dt = DataTableQuery(Program.getrecipients, Program.queryParameters, true))
                 {
+                    foreach (DataRow row in dt.Rows)
+                    {
 
-                    if (row[0].ToString() == Program.bittid || row[0].ToString() == Program.poloid || Program.poolwallets.Contains(row[0].ToString()))
-                    {
-                        allrecipients.Add(row[0].ToString());
-                        continue;
-                    }
-                    else if (!allrecipients.Contains(row[0].ToString()))
-                    {
-                        allrecipients.Add(row[0].ToString());
-                        GetRecipients(row[0].ToString(), allrecipients);
-                    }
-                    else
-                    {
-                        allrecipients.Add(row[0].ToString());
+                        if (Program.exchangewallets.Contains(row[0].ToString()) || Program.poolwallets.Contains(row[0].ToString()))
+                        {
+                            allrecipients.Add(row[0].ToString());
+                            continue;
+                        }
+                        else if (!allrecipients.Contains(row[0].ToString()))
+                        {
+                            allrecipients.Add(row[0].ToString());
+                            GetRecipients(row[0].ToString(), allrecipients);
+                        }
+                        else
+                        {
+                            allrecipients.Add(row[0].ToString());
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error getting recipients for " + recipient + ": " + ex);
+            }
+            finally
+            {
+                Program.queryParameters.Clear();
             }
             return allrecipients;
         }
@@ -93,7 +104,7 @@ namespace Traffic_Award
                 recipient.receiverlist = allrecipients;
                 foreach (string exchange in allrecipients)
                 {
-                    if (exchange == Program.poloid || exchange == Program.bittid)
+                    if (Program.exchangewallets.Contains(exchange))
                     {
                         if (Program.excheck.Select(x => x).Where(y => y.recipientid == recipient.recipientid && y.penalize == true && y.penalid == i).Count() > 0)
                         {
@@ -111,62 +122,74 @@ namespace Traffic_Award
                 }
                 recipient.waschecked = true;
             }
+            int awards = 0;
+            int reductions = 0;
+            int loopcount = 0;
             foreach (ExCheck recipient in Program.excheck)
             {
-                int loopcount = 0;
+                loopcount = 0;
+                awards = 0;
+                reductions = 0;
                 if (!recipient.penalize)
                 {
                     loopcount = reward;
+                    awards += reward;
                 }
-                //if (recipient.penalize)
-                //{
-                //    loopcount = 1;
-                //}
-                //else
-                //{
-                //    loopcount = 5;
-                //}
+                else
+                {
+                    reductions += reward;
+                }
+                Program.queryParameters.Add("@wallet_id", recipient.recipientid);
+                if (Program.exchangeaward == reward)
+                {
+                    Program.queryParameters.Add("@exchange_entries", reward);
+                    Program.queryParameters.Add("@trans_entries", 0);
+                }
+                else
+                {
+                    Program.queryParameters.Add("@exchange_entries", 0);
+                    Program.queryParameters.Add("@trans_entries", reward);
+                }
+                Program.queryParameters.Add("@reductions", reductions);
+                TestDBUpdate(Program.summarytableupsert, Program.queryParameters, true);
                 for (int i = 0; i < loopcount; i++)
                 {
                     Program.rafflemembers.Add(recipient.recipientid);
                 }
             }
+
         }
 
-        public static DataTable TestDBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
+        public static void TestDBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
         {
-            using (DataTable dt = new DataTable())
+            try
             {
-                try
+                using (var mariadbconnection = new MySqlConnection(Program.db_connstring))
                 {
-                    using (var mariadbconnection = new MySqlConnection(Program.db_connstring))
+                    mariadbconnection.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, mariadbconnection))
                     {
-                        mariadbconnection.Open();
-                        using (MySqlCommand cmd = new MySqlCommand(query, mariadbconnection))
+                        cmd.CommandType = CommandType.Text;
+                        cmd.CommandTimeout = 300;
+                        foreach (KeyValuePair<string, object> item in parameters)
                         {
-                            cmd.CommandType = CommandType.Text;
-                            cmd.CommandTimeout = 300;
-                            foreach (KeyValuePair<string, object> item in parameters)
-                            {
-                                cmd.Parameters.AddWithValue(item.Key, item.Value);
-                            }
-                            cmd.ExecuteNonQuery();
+                            cmd.Parameters.AddWithValue(item.Key, item.Value);
                         }
+                        cmd.ExecuteNonQuery();
                     }
                 }
-                catch (Exception ex)
+            }
+            catch (Exception ex)
+            {
+                if (showerrors)
                 {
-                    if (showerrors)
-                    {
-                        Console.WriteLine("Error in TestDBUpdate - " + ex);
-                        Console.ReadKey(true);
-                    }
+                    Console.WriteLine("Error in TestDBUpdate - " + ex);
+                    Console.ReadKey(true);
                 }
-                finally
-                {
-                    Program.queryParameters.Clear();
-                }
-                return dt;
+            }
+            finally
+            {
+                Program.queryParameters.Clear();
             }
         }
 
