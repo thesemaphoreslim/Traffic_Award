@@ -84,12 +84,15 @@ namespace Traffic_Award
         static string getpoolwallets = configuration["getpoolwallets"];
         static string geteligibility = configuration["geteligibility"];
         static string getexchangetrans = configuration["getexchangetrans"];
+        static string getexchangetransamt = configuration["getexchangetransamt"];
         public static string getrecipients = configuration["getrecipients"];
         static string checkfortable = configuration["checkfortable"];
         static string createexchangetable = configuration["createexchangetable"];
         static string createtranstable = configuration["createtranstable"];
         static string createsummarytable = configuration["createsummarytable"];
         static string getsummarytable = configuration["getsummarydata"];
+        static string getnewbmfmembers = configuration["getnewbmfmembers"];
+        static string getbmfdonations = configuration["getbmfdonations"];
         public static string summarytableupsert = configuration["summarytableupsert"];
         public static double startdayinterval = double.Parse(configuration["startdayinterval"]);
         public static double enddayinterval = double.Parse(configuration["enddayinterval"]);
@@ -119,13 +122,15 @@ namespace Traffic_Award
         public static List<string> exchangewallets = new List<string>{ poloid, bittid, liveid };
         public static int transactionaward = int.Parse(configuration["transactionaward"]);
         public static int exchangeaward = int.Parse(configuration["exchangeaward"]);
+        public static int bmfaward = int.Parse(configuration["bmfaward"]);
         public static List<Summary> summary = new List<Summary>();
+        static List<string> examt = new List<string>();
         static string displaystr = null;
         #endregion
 
 
         #region Calculating timestamp
-        public static DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0);
+        public static DateTime burstepoch = new DateTime(2014, 08, 11, 2, 0, 0, DateTimeKind.Utc);
         public static DateTime startdate = DateTime.Now.AddDays(startdayinterval);
         public static DateTime enddate = DateTime.Now.AddDays(enddayinterval);
         public static string startdatetime = configuration["startdatetime"];
@@ -158,42 +163,44 @@ namespace Traffic_Award
                     Console.WriteLine("Press any key to continue");
                     Console.ReadKey(true);
                 }
-                //Console.WriteLine(Environment.NewLine + Environment.NewLine + "Running initial setup...this may take a moment." + Environment.NewLine + Environment.NewLine);
+
+
                 #region Check for schema
                 queryParameters.Add("@table_name", "exchange_wallets");
                 queryParameters.Add("@db_name", db_name);
                 if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
                 {
-                    Utilities.TestDBUpdate(createexchangetable, queryParameters, true);
+                    Utilities.DBUpdate(createexchangetable, queryParameters, true);
                 }
                 queryParameters.Add("@table_name", "all_weekly_trans");
                 queryParameters.Add("@db_name", db_name);
                 if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
                 {
-                    Utilities.TestDBUpdate(createtranstable, queryParameters, true);
+                    Utilities.DBUpdate(createtranstable, queryParameters, true);
                 }
                 queryParameters.Add("@table_name", "raffle_summary");
                 queryParameters.Add("@db_name", db_name);
                 if (string.IsNullOrEmpty(Utilities.GetWinnerData(checkfortable, queryParameters, true)))
                 {
-                    Utilities.TestDBUpdate(createsummarytable, queryParameters, true);
+                    Utilities.DBUpdate(createsummarytable, queryParameters, true);
                 }
                 #endregion
 
+
                 #region Clearing testdb tables
-                Utilities.TestDBUpdate("TRUNCATE TABLE exchange_wallets;", queryParameters, true);
-                Utilities.TestDBUpdate("TRUNCATE TABLE all_weekly_trans;", queryParameters, true);
-                Utilities.TestDBUpdate("TRUNCATE TABLE raffle_summary;", queryParameters, true);
+                Utilities.DBUpdate("TRUNCATE TABLE exchange_wallets;", queryParameters, true);
+                Utilities.DBUpdate("TRUNCATE TABLE all_weekly_trans;", queryParameters, true);
+                Utilities.DBUpdate("TRUNCATE TABLE raffle_summary;", queryParameters, true);
                 #endregion
 
+
                 #region Capturing exchange wallets
-                //Console.WriteLine("Adding except for exchange wallets.");
                 queryParameters.Add("@poloid", poloid);
                 queryParameters.Add("@bittid", bittid);
                 queryParameters.Add("@brsid", brsid);
                 queryParameters.Add("@mortid", mortid);
                 queryParameters.Add("@liveid", liveid);
-                Utilities.TestDBUpdate(allexchangewallets, queryParameters, false);
+                Utilities.DBUpdate(allexchangewallets, queryParameters, false);
                 #endregion
 
 
@@ -203,7 +210,6 @@ namespace Traffic_Award
                 queryParameters.Add("@burstamount", burstamount);
                 queryParameters.Add("@feeamount", feeamount);
                 queryParameters.Add("@minfeeamount", minfeeamount);
-                //Console.WriteLine("Querying Burst blockchain for all transactions over " + burstamount + " planck between " + starttimestamp + " and " + endtimestamp + Environment.NewLine);
                 using (DataTable dt = Utilities.DataTableQuery(getalltransactions, queryParameters, true))
                 {
                     sb.Append("INSERT INTO all_weekly_trans (amount, fee, recipient_id, sender_id, timestamp, trans_id) VALUES ");
@@ -214,7 +220,7 @@ namespace Traffic_Award
                     sb.Append(string.Join(",", alltrans)).Append(";");
                     if (alltrans.Count > 0)
                     {
-                        Utilities.TestDBUpdate(sb.ToString(), queryParameters, true);
+                        Utilities.DBUpdate(sb.ToString(), queryParameters, true);
                     }
                     else
                     {
@@ -286,15 +292,17 @@ namespace Traffic_Award
                         }
                     } while (string.IsNullOrEmpty(mySelection));
                     RunSetup();
+                    rafflemembers.Clear();
                     #endregion
+
 
                     Console.WriteLine("If you hang here, there may be a problem with your database connection.");
                     Console.WriteLine("Close any open connections or restart the application.");
 
+
                     #region Collect Pool wallets
                     if (removePoolAddresses)
                     {
-                        //Console.WriteLine("Collecting pool wallets..." + Environment.NewLine);
                         using (DataTable dt = Utilities.DataTableQuery(getpoolwallets, queryParameters, true))
                         {
                             foreach (DataRow row in dt.Rows)
@@ -308,9 +316,48 @@ namespace Traffic_Award
                     #endregion
 
 
+                    #region Capturing qualifying BMF donations
+                    queryParameters.Add("@starttime", starttimestamp);
+                    queryParameters.Add("@endtime", endtimestamp);
+                    queryParameters.Add("@bmfid", bmfid);
+                    queryParameters.Add("@bmfaward", bmfaward);
+                    queryParameters.Add("@burstamount", burstamount);
+                    queryParameters.Add("@bmfpid", bmfpid);
+                    queryParameters.Add("@devid", devid);
+                    Utilities.DBUpdate(getbmfdonations, queryParameters, true);
+                    using (DataTable dt = Utilities.DataTableQuery("SELECT * from raffle_summary where bmf_entries>0;", queryParameters, true))
+                    {
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            for (int i = 0; i < bmfaward; i++)
+                            {
+                                rafflemembers.Add(row[0].ToString());
+                            }
+                        }
+                    }
+                    #endregion
+
+
+                    #region Capturing qualifying BMF pool members
+                    //queryParameters.Add("@starttime", starttimestamp);
+                    //queryParameters.Add("@endtime", endtimestamp);
+                    //queryParameters.Add("@bmfpid", bmfpid);
+                    //queryParameters.Add("@bmfaward", bmfaward);
+                    //Utilities.DBUpdate(getnewbmfmembers, queryParameters, true);
+                    //using (DataTable dt = Utilities.DataTableQuery("SELECT * FROM raffle_summary WHERE bmf_entries>0;", queryParameters, true))
+                    //{
+                    //    foreach (DataRow row in dt.Rows)
+                    //    {
+                    //        for (int i = 0; i < bmfaward; i++)
+                    //        {
+                    //            rafflemembers.Add(row[0].ToString());
+                    //        }
+                    //    }
+                    //}
+                    #endregion
+
+
                     #region Capturing qualifying transactions
-                    rafflemembers.Clear();
-                    //Console.WriteLine("Querying blockchain to find qualifying transactions for the raffle" + Environment.NewLine);
                     excheck.Clear();
                     queryParameters.Add("@poloid", poloid);
                     queryParameters.Add("@bittid", bittid);
@@ -333,8 +380,21 @@ namespace Traffic_Award
 
 
                     #region Capture qualifying exchange purchases
-                    //Console.WriteLine("Querying blockchain to find qualifying exchange purchases" + Environment.NewLine);
                     excheck.Clear();
+                    queryParameters.Add("@starttime", starttimestamp);
+                    queryParameters.Add("@endtime", endtimestamp);
+                    queryParameters.Add("@exchangemin", exchangemin);
+                    queryParameters.Add("@poloid", poloid);
+                    queryParameters.Add("@bittid", bittid);
+                    queryParameters.Add("@devid", devid);
+                    queryParameters.Add("@liveid", liveid);
+                    using (DataTable dt = Utilities.DataTableQuery(getexchangetransamt, queryParameters, true))
+                    {
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            examt.Add(row[0].ToString());
+                        }
+                    }
                     queryParameters.Add("@starttime", starttimestamp);
                     queryParameters.Add("@endtime", endtimestamp);
                     queryParameters.Add("@exchangemin", exchangemin);
@@ -346,7 +406,10 @@ namespace Traffic_Award
                     {
                         foreach (DataRow row in dt.Rows)
                         {
-                            excheck.Add(new ExCheck { recipientid = row[0].ToString(), penalize = false, penalid = -1 });
+                            if (examt.Contains(row[0].ToString()))
+                            {
+                                excheck.Add(new ExCheck { recipientid = row[0].ToString(), penalize = false, penalid = -1 });
+                            }
                         }
                     }
                     Console.WriteLine("Checking all " + excheck.Count + " exchange purchases for sell activity. This may take a moment." + Environment.NewLine);
@@ -380,7 +443,7 @@ namespace Traffic_Award
                     {
                         queryParameters.Add("@wallet_address", address.Value);
                         queryParameters.Add("@wallet_id", address.Key);
-                        Utilities.TestDBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
+                        Utilities.DBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
                         do
                         {
                             index = rafflemembers.IndexOf(address.Key);
@@ -415,7 +478,7 @@ namespace Traffic_Award
                     {
                         queryParameters.Add("@wallet_address", address.Value);
                         queryParameters.Add("@wallet_id", address.Key);
-                        Utilities.TestDBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
+                        Utilities.DBUpdate("UPDATE raffle_summary SET wallet_address=@wallet_address WHERE wallet_id=@wallet_id;", Program.queryParameters, true);
                     }
                     int reducecount = -1;
                     var distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
@@ -449,20 +512,22 @@ namespace Traffic_Award
                             queryParameters.Add("@total_entries", member.count);
                         }
                         queryParameters.Add("@wallet_address", member.member);
-                        Utilities.TestDBUpdate("UPDATE raffle_summary SET total_entries=@total_entries WHERE wallet_address=@wallet_address;", Program.queryParameters, true);
+                        Utilities.DBUpdate("UPDATE raffle_summary SET total_entries=@total_entries WHERE wallet_address=@wallet_address;", Program.queryParameters, true);
                     }
                     if (reducecount >= 0)
                     {
                         Console.WriteLine(Environment.NewLine + "There are now a total of " + rafflemembers.Count + " raffle entries." + Environment.NewLine);
                     }
                     sb.Clear();
-                    //distinctlist = from item in rafflemembers group item by item into grp select new { member = grp.Key, count = grp.Count() };
-                    using (DataTable dt = Utilities.DataTableQuery("SELECT wallet_address, total_entries, exchange_entries, trans_entries, reductions FROM raffle_summary order by total_entries desc;", queryParameters, true))
+                    using (DataTable dt = Utilities.DataTableQuery("SELECT wallet_address, total_entries, bmf_entries, exchange_entries, trans_entries, reductions FROM raffle_summary order by total_entries desc;", queryParameters, true))
+                    //using (DataTable dt = Utilities.DataTableQuery("SELECT wallet_address, total_entries, exchange_entries, trans_entries, reductions FROM raffle_summary order by total_entries desc, wallet_address;", queryParameters, true))
                     {
-                        sb.Append("Burst Address,Total Entries,Exchange Entries,Transaction Entries,Reductions").Append(Environment.NewLine);
+                        sb.Append("Burst Address,Total Entries,BMF Entries,Exchange Entries,Transaction Entries,Reductions").Append(Environment.NewLine);
+                        //sb.Append("Burst Address,Total Entries,Exchange Entries,Transaction Entries,Reductions").Append(Environment.NewLine);
                         foreach (DataRow row in dt.Rows)
                         {
-                            sb.Append(row[0].ToString()).Append(",").Append(row[1].ToString()).Append(",").Append(row[2].ToString()).Append(",").Append(row[3].ToString()).Append(",").Append(row[4].ToString()).Append(Environment.NewLine);
+                            sb.Append(row[0].ToString()).Append(",").Append(row[1].ToString()).Append(",").Append(row[2].ToString()).Append(",").Append(row[3].ToString()).Append(",").Append(row[4].ToString()).Append(",").Append(row[5].ToString()).Append(Environment.NewLine);
+                            //sb.Append(row[0].ToString()).Append(",").Append(row[1].ToString()).Append(",").Append(row[2].ToString()).Append(",").Append(row[3].ToString()).Append(",").Append(row[4].ToString()).Append(Environment.NewLine);
                         }
                     }
                     try

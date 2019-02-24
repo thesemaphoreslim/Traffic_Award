@@ -151,7 +151,7 @@ namespace Traffic_Award
                     Program.queryParameters.Add("@trans_entries", reward);
                 }
                 Program.queryParameters.Add("@reductions", reductions);
-                TestDBUpdate(Program.summarytableupsert, Program.queryParameters, true);
+                DBUpdate(Program.summarytableupsert, Program.queryParameters, true);
                 for (int i = 0; i < loopcount; i++)
                 {
                     Program.rafflemembers.Add(recipient.recipientid);
@@ -160,7 +160,7 @@ namespace Traffic_Award
 
         }
 
-        public static void TestDBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
+        public static void DBUpdate(string query, Dictionary<string, object> parameters, bool showerrors)
         {
             try
             {
